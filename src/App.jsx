@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import TeamEditor from './components/TeamEditor.jsx'
 import DefensiveSummary from './components/DefensiveSummary.jsx'
 import OffensiveCoverage from './components/OffensiveCoverage.jsx'
+import MatchupAnalyzer from './components/MatchupAnalyzer.jsx'
 import Legend from './components/Legend.jsx'
 import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount } from './services/pokeapi.js'
 import { TYPES } from './data/types.js'
@@ -92,6 +93,10 @@ function App() {
             <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
           </div>
           <TeamEditor team={filledTeam} onChange={setTeam} />
+        </section>
+
+        <section>
+          <MatchupAnalyzer team={filledTeam} />
         </section>
 
         <section>
