@@ -19,3 +19,11 @@ body {
 a {
   color: inherit;
 }
+
+html, body {
+  overflow-x: hidden;
+  position: relative;
+  max-width: 100%;
+  width: 100vw;
+  overscroll-behavior-x: none; 
+}

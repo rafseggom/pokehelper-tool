@@ -1,8 +1,9 @@
 .layout {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 16px;
   color: #e9ebf0;
+  overflow-x: hidden;
 }
 
 header {
@@ -47,7 +48,7 @@ section {
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
   gap: 14px;
 }
 
@@ -163,9 +164,8 @@ section {
 
 .summary-layout {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 1fr;
   gap: 12px;
-  align-items: start;
 }
 
 .legend { border: 1px solid #24293a; border-radius: 14px; padding: 10px; background: #171921; }
@@ -197,8 +197,8 @@ section {
 
 .type-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 8px;
 }
 
 .type-grid__item {
@@ -403,6 +403,18 @@ footer {
   .team-grid { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: 1fr; }
   .type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .summary-layout {
+    grid-template-columns: 1fr 260px;
+  }
+}
+
+@media (min-width: 480px) {
+  .type-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
 }
 
 /* Modal */
