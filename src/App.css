@@ -605,8 +605,11 @@ footer {
   color: #cdd3e0;
   text-align: left;
   cursor: pointer;
-  text-transform: capitalize;
   transition: background 120ms ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .move-suggestion:hover {
@@ -615,6 +618,15 @@ footer {
 
 .move-suggestion:last-child {
   border-bottom: none;
+}
+
+.move-suggestion-name {
+  font-weight: 500;
+}
+
+.move-suggestion-en {
+  font-size: 0.8rem;
+  color: #7d8594;
 }
 
 .move-selected {

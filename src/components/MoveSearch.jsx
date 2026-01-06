@@ -106,7 +106,8 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
               className="move-suggestion"
               onClick={() => handleSelect(s.name)}
             >
-              {s.name}
+              <span className="move-suggestion-name">{s.displayName}</span>
+              <span className="move-suggestion-en">({s.name})</span>
             </button>
           ))}
         </div>

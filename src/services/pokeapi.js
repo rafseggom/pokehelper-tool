@@ -142,26 +142,93 @@ export async function fetchMove(nameOrId) {
 }
 
 /**
- * Busca movimientos por nombre (para autocomplete)
- * @param {string} query - Texto de búsqueda
+ * Busca movimientos por nombre en español o inglés (para autocomplete)
+ * @param {string} query - Texto de búsqueda en español o inglés
  * @param {number} limit - Límite de resultados
- * @returns {Promise<Array<{name: string, id: number}>>}
+ * @returns {Promise<Array<{name: string, displayName: string, id: number}>>}
  */
+let movesListCache = null // Cache de movimientos con nombres en español
+
 export async function searchMoves(query, limit = 20) {
   try {
-    const data = await fetchWithCache(`${BASE_URL}/move?limit=920`) // Todos los movimientos Gen 1-9
-    
-    const normalized = query.toLowerCase().replace(/[^a-z0-9-]/g, '')
-    
-    const matches = data.results
-      .filter(m => m.name.includes(normalized))
-      .slice(0, limit)
-      .map((m) => ({
+    // Cargar lista completa de movimientos con nombres en español (solo la primera vez)
+    if (!movesListCache) {
+      const listData = await fetchWithCache(`${BASE_URL}/move?limit=920`)
+      
+      // Obtener nombres en español para los primeros 920 movimientos (puede tardar un poco la primera vez)
+      // Para optimizar, solo obtenemos los datos cuando el usuario busca la primera vez
+      const moves = listData.results.map(m => ({
         name: m.name,
-        id: parseInt(m.url.split('/').filter(Boolean).pop())
+        id: parseInt(m.url.split('/').filter(Boolean).pop()),
+        url: m.url
       }))
+      
+      movesListCache = moves
+    }
     
-    return matches
+    const normalized = query.toLowerCase().trim()
+    
+    // Buscar por nombre en inglés primero (más rápido)
+    const matchesByEnglish = movesListCache
+      .filter(m => m.name.toLowerCase().includes(normalized))
+      .slice(0, limit)
+    
+    // Si encontramos suficientes resultados por nombre inglés, retornar esos
+    if (matchesByEnglish.length >= 5 || normalized.length < 2) {
+      // Obtener nombres en español para las coincidencias
+      const results = await Promise.all(
+        matchesByEnglish.slice(0, limit).map(async (m) => {
+          try {
+            const moveData = await fetchWithCache(m.url)
+            const spanishName = moveData.names.find(n => n.language.name === 'es')?.name || m.name
+            return {
+              name: m.name,
+              displayName: spanishName,
+              id: m.id
+            }
+          } catch {
+            return {
+              name: m.name,
+              displayName: m.name,
+              id: m.id
+            }
+          }
+        })
+      )
+      return results
+    }
+    
+    // Si no hay suficientes resultados, buscar también en nombres españoles
+    // (requiere cargar más datos, pero solo si es necesario)
+    const allMovesWithSpanish = await Promise.all(
+      movesListCache.slice(0, 200).map(async (m) => { // Limitar a 200 para no sobrecargar
+        try {
+          const moveData = await fetchWithCache(m.url)
+          const spanishName = moveData.names.find(n => n.language.name === 'es')?.name || m.name
+          return {
+            name: m.name,
+            displayName: spanishName,
+            id: m.id,
+            spanishLower: spanishName.toLowerCase()
+          }
+        } catch {
+          return {
+            name: m.name,
+            displayName: m.name,
+            id: m.id,
+            spanishLower: m.name.toLowerCase()
+          }
+        }
+      })
+    )
+    
+    // Buscar en nombres españoles
+    const matchesBySpanish = allMovesWithSpanish
+      .filter(m => m.spanishLower.includes(normalized) || m.name.toLowerCase().includes(normalized))
+      .slice(0, limit)
+      .map(({ name, displayName, id }) => ({ name, displayName, id }))
+    
+    return matchesBySpanish
   } catch (error) {
     console.error('Error searching moves:', error)
     return []
