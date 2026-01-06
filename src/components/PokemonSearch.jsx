@@ -3,10 +3,6 @@ import { searchPokemon, fetchPokemon } from '../services/pokeapi.js'
 import TypeIcon from './TypeIcon.jsx'
 import { ES_LABELS } from '../data/types.js'
 
-/**
- * Componente de búsqueda de Pokémon con autocomplete
- * Al seleccionar, obtiene datos completos (sprite, tipos) de la API
- */
 export default function PokemonSearch({ value, onChange }) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
@@ -15,7 +11,6 @@ export default function PokemonSearch({ value, onChange }) {
   const inputRef = useRef(null)
   const dropdownRef = useRef(null)
 
-  // Click fuera cierra el dropdown
   useEffect(() => {
     function handleClickOutside(e) {
       if (
@@ -29,7 +24,6 @@ export default function PokemonSearch({ value, onChange }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Buscar cuando el usuario escribe
   useEffect(() => {
     if (query.length < 2) {
       setSuggestions([])
@@ -69,7 +63,6 @@ export default function PokemonSearch({ value, onChange }) {
     setSuggestions([])
   }
 
-  // Si ya hay un Pokémon seleccionado, mostrar su card
   if (value) {
     return (
       <div className="pokemon-selected">

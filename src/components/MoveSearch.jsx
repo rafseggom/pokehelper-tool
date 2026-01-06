@@ -67,10 +67,8 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
     setSuggestions([])
   }
 
-  // STAB: movimiento tiene el mismo tipo que alguno del Pokémon
   const hasStab = value && value.type && pokemonTypes.includes(value.type)
 
-  // Si ya hay un movimiento seleccionado, mostrar su info
   if (value && value.name) {
     return (
       <div className="move-selected">

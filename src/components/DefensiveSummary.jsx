@@ -9,7 +9,6 @@ export default function DefensiveSummary({ team }) {
     <div className="panel">
       <div className="panel-head">
         <h2>Resumen defensivo</h2>
-        <p className="muted">Ataques recibidos: x0 / x0.5 / x1 / x2 / x4</p>
       </div>
       <div className="summary-grid">
         {TYPES.map((t) => {

@@ -274,6 +274,20 @@ section {
   border: 1px dashed #3a3f4f;
   color: #d7d8dd;
   padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 120ms ease;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  background: #1a1e28;
+  border-color: #4e5564;
+  color: #e9ebf0;
+}
+
+.ghost-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .type-picker-btn {

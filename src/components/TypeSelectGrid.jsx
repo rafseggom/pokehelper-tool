@@ -4,7 +4,7 @@ import TypeIcon from './TypeIcon.jsx';
 export default function TypeSelectGrid({
   selected = [],
   onChange,
-  max = 2,          // para Pokémon: hasta 2 tipos. Para movimientos: usa max=1.
+  max = 2,          
 }) {
   const toggle = (t) => {
     if (max === 1) {

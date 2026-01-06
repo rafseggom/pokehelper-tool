@@ -14,7 +14,6 @@ export default function OffensiveCoverage({ team }) {
   const best = computeOffensiveCoverage(team)
   const numeric = (m) => {
     const r = Math.round(m * 10) / 10
-    // Map to display set
     if (r <= 0) return '0'
     if (r <= 0.5) return '0.5'
     if (r <= 1) return '1'
@@ -35,7 +34,7 @@ export default function OffensiveCoverage({ team }) {
           const entry = best[def]
           const label = formatMultiplier(entry.best)
           const num = numeric(entry.best)
-          const bad = entry.best < 2 // not super effective
+          const bad = entry.best < 2 
           return (
             <div key={def} className={`summary-card type-surface--${def} ${bad ? 'bad' : ''}`}>
               <div className="summary-header">

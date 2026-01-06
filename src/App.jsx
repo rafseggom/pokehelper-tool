@@ -3,6 +3,7 @@ import TeamEditor from './components/TeamEditor.jsx'
 import DefensiveSummary from './components/DefensiveSummary.jsx'
 import OffensiveCoverage from './components/OffensiveCoverage.jsx'
 import Legend from './components/Legend.jsx'
+import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount } from './services/pokeapi.js'
 import { TYPES } from './data/types.js'
 import './App.css'
 
@@ -14,12 +15,10 @@ function App() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        // Migrar formato antiguo {types, moves} a nuevo {pokemon, moves}
         return parsed.map(slot => {
           if (slot.pokemon || !slot.types) {
-            return slot // Ya está en formato nuevo o está vacío
+            return slot 
           }
-          // Convertir formato antiguo
           return { pokemon: null, moves: [] }
         })
       } catch {
@@ -28,6 +27,9 @@ function App() {
     }
     return EMPTY_TEAM
   })
+
+  const [loadingMoves, setLoadingMoves] = useState(false)
+  const [movesProgress, setMovesProgress] = useState({ current: 0, total: 0 })
 
   useEffect(() => {
     localStorage.setItem('team', JSON.stringify(team))
@@ -38,6 +40,27 @@ function App() {
   const base = import.meta.env.BASE_URL || '/'
 
   const resetAll = () => setTeam(EMPTY_TEAM)
+
+  const handlePreloadMoves = async () => {
+    if (loadingMoves) return
+    
+    setLoadingMoves(true)
+    setMovesProgress({ current: 0, total: 920 })
+    
+    try {
+      await preloadAllMoves((current, total) => {
+        setMovesProgress({ current, total })
+      })
+      alert(`✅ ${getCachedMovesCount()} movimientos cargados en caché`)
+    } catch (error) {
+      alert(`❌ Error al cargar movimientos: ${error.message}`)
+    } finally {
+      setLoadingMoves(false)
+      setMovesProgress({ current: 0, total: 0 })
+    }
+  }
+
+  const movesPreloaded = areMovesPreloaded()
 
   return (
     <div className="layout">
@@ -52,7 +75,20 @@ function App() {
 
       <main className="content">
         <section>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <h2>Equipo</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+            <button 
+              className="ghost-btn" 
+              onClick={handlePreloadMoves}
+              disabled={loadingMoves}
+              title={movesPreloaded ? `${getCachedMovesCount()} movimientos en caché` : 'Cargar todos los movimientos para búsqueda más rápida'}
+            >
+              {loadingMoves 
+                ? `Cargando ${movesProgress.current}/${movesProgress.total}...` 
+                : movesPreloaded 
+                  ? `✓ Ataques en caché (${getCachedMovesCount()})` 
+                  : 'Cachear ataques'}
+            </button>
             <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
           </div>
           <TeamEditor team={filledTeam} onChange={setTeam} />
