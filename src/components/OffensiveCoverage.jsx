@@ -44,7 +44,7 @@ export default function OffensiveCoverage({ team }) {
                 <span className={`pill ${multiplierClass(label)}`}>x{num}</span>
               </div>
               {entry.source && (
-                <div className="muted small">Hueco {entry.source.slotIndex + 1}, movimiento {entry.source.moveIndex + 1}{entry.source.stab ? ' (STAB)' : ''}</div>
+                <div className="muted small">{entry.source.pokemonName} - {entry.source.moveName}{entry.source.stab ? ' (STAB)' : ''}</div>
               )}
               {!entry.source && <div className="muted small">Sin cobertura</div>}
             </div>
