@@ -88,7 +88,7 @@ export async function searchPokemon(query, limit = 20) {
   try {
     // PokeAPI no tiene endpoint de búsqueda, así que obtenemos la lista completa y filtramos
     // (en producción podrías cachear esta lista o usar un endpoint custom)
-    const data = await fetchWithCache(`${BASE_URL}/pokemon?limit=1025`) // Gen 1-9
+    const data = await fetchWithCache(`${BASE_URL}/pokemon?limit=5000`) // Gen 1-9
     
     const normalized = query.toLowerCase().replace(/[^a-z0-9-]/g, '')
     

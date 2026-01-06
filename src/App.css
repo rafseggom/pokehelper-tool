@@ -822,3 +822,18 @@ footer {
 .move-search-container {
   overflow: visible !important;
 }
+
+.slot-card:focus-within {
+  z-index: 50; 
+  position: relative; 
+  border-color: #5a8fc7; 
+}
+
+.pokemon-dropdown, 
+.move-dropdown {
+  z-index: 1000 !important;
+}
+
+.team-grid, section {
+  overflow: visible !important;
+}
