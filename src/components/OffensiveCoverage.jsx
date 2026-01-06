@@ -27,7 +27,6 @@ export default function OffensiveCoverage({ team }) {
     <div className="panel">
       <div className="panel-head">
         <h2>Cobertura ofensiva</h2>
-        <p className="muted">Tipos contra los que puedes golpear mejor (considera STAB y movimientos no defensivos).</p>
       </div>
       <div className="summary-grid">
         {TYPES.map((def) => {
