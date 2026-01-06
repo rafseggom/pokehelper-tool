@@ -9,7 +9,8 @@ export function computeDefensiveSummary(team) {
     buckets[atk] = { x0: 0, x0_5: 0, x1: 0, x2: 0, x4: 0 };
     perSlot[atk] = [];
     team.forEach((slot) => {
-      const defs = (slot?.types || []).filter(Boolean);
+      // Nueva estructura: slot.pokemon.types
+      const defs = (slot?.pokemon?.types || []).filter(Boolean);
       const m = defs.length >= 2 ? effectivenessDual(atk, defs) : effectivenessDual(atk, [defs[0]]);
       perSlot[atk].push(m || 1);
       if (m === 0) buckets[atk].x0 += 1;
@@ -27,14 +28,15 @@ export function computeDefensiveSummary(team) {
 }
 
 // Offensive coverage: best multiplier vs each single defender type across all non-defensive moves
-// Applies STAB=1.5 if move.type is in slot.types; STAB multiplies after chart effectiveness
+// Applies STAB=1.5 if move.type is in slot.pokemon.types; STAB multiplies after chart effectiveness
 export function computeOffensiveCoverage(team) {
   const bestByDefType = {}; // defender -> {best, source: {slotIndex, moveIndex, moveType, stab}}
   TYPES.forEach((defType) => {
     let best = 0;
     let bestSource = null;
     team.forEach((slot, sIdx) => {
-      const slotTypes = (slot?.types || []).filter(Boolean);
+      // Nueva estructura: slot.pokemon.types
+      const slotTypes = (slot?.pokemon?.types || []).filter(Boolean);
       (slot?.moves || []).forEach((mv, mIdx) => {
         if (!mv || mv.defensive || !mv.type) return; // exclude defensive or empty moves
         const base = effectivenessSingle(mv.type, defType);

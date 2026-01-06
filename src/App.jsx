@@ -6,15 +6,23 @@ import Legend from './components/Legend.jsx'
 import { TYPES } from './data/types.js'
 import './App.css'
 
-const EMPTY_TEAM = Array.from({ length: 6 }, () => ({ types: [], moves: [] }))
+const EMPTY_TEAM = Array.from({ length: 6 }, () => ({ pokemon: null, moves: [] }))
 
 function App() {
   const [team, setTeam] = useState(() => {
     const stored = localStorage.getItem('team')
     if (stored) {
       try {
-        return JSON.parse(stored)
-      } catch (e) {
+        const parsed = JSON.parse(stored)
+        // Migrar formato antiguo {types, moves} a nuevo {pokemon, moves}
+        return parsed.map(slot => {
+          if (slot.pokemon || !slot.types) {
+            return slot // Ya está en formato nuevo o está vacío
+          }
+          // Convertir formato antiguo
+          return { pokemon: null, moves: [] }
+        })
+      } catch {
         return EMPTY_TEAM
       }
     }
@@ -25,7 +33,7 @@ function App() {
     localStorage.setItem('team', JSON.stringify(team))
   }, [team])
 
-  const filledTeam = useMemo(() => team.map((s) => ({ types: s.types || [], moves: s.moves || [] })), [team])
+  const filledTeam = useMemo(() => team.map((s) => ({ pokemon: s.pokemon || null, moves: s.moves || [] })), [team])
 
   const base = import.meta.env.BASE_URL || '/'
 
