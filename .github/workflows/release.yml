@@ -1,4 +1,4 @@
-name: Release
+name: Android CI/CD & Release
 
 on:
   push:
@@ -12,36 +12,45 @@ jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
-      # 1. Bajar el código (fetch-depth: 0 es necesario para calcular el changelog)
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Configurar entorno Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. Instalar dependencias del proyecto
       - name: Install Dependencies
         run: npm ci
 
-      # 4. Compilar la web para asegurar que la versión es estable
       - name: Build Web App
         run: npm run build
-        env:
-          NODE_ENV: production
 
-      # 5. Calcular versión y generar Changelog automático
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6. Crear la Release en GitHub
       - name: Create a GitHub release
         uses: softprops/action-gh-release@v2
         if: ${{ steps.tag_version.outputs.new_tag }}
@@ -49,3 +58,4 @@ jobs:
           tag_name: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
           body: ${{ steps.tag_version.outputs.changelog }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
