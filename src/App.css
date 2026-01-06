@@ -320,9 +320,49 @@ button:disabled {
 .small { font-size: 0.9rem; }
 
 footer {
-  margin-top: 16px;
+  margin-top: 24px;
+  padding: 16px 0;
+  border-top: 1px solid #222430;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.footer-info {
   color: #8f95a5;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  color: #9ea8bc;
+  text-decoration: none;
+  border: 1px solid #2a2f40;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 150ms ease;
+  background: transparent;
+}
+
+.footer-link:hover {
+  color: #d4dbe8;
+  border-color: #4e5564;
+  background: #1a1e28;
+  transform: translateY(-1px);
+}
+
+.footer-link svg {
+  flex-shrink: 0;
 }
 
 .collapsible {
