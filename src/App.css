@@ -777,3 +777,48 @@ footer {
   border-top: 1px solid #222430;
 }
 
+@media (max-width: 768px) {
+  .pokemon-selected {
+    flex-direction: column; 
+    align-items: center;    
+    text-align: center;
+    position: relative;     
+    padding-top: 24px;     
+  }
+
+  .pokemon-info {
+    width: 100%;
+    align-items: center; 
+  }
+
+  .type-badges {
+    justify-content: center; 
+    margin-top: 4px;
+  }
+
+  /* Botón de borrar (X) */
+  .pokemon-selected .ghost-btn-small {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+  }
+  
+  .pokemon-sprite {
+    width: 80px; 
+    height: 80px;
+  }
+}
+
+.pokemon-dropdown, 
+.move-dropdown {
+  z-index: 99999 !important; 
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.75); 
+  border: 1px solid #4a5568;
+  background-color: #1a1d26; 
+}
+
+.pokemon-search-container,
+.move-search-container {
+  overflow: visible !important;
+}
