@@ -6,7 +6,7 @@ export default function TeamEditor({ team, onChange }) {
     onChange(next);
   };
   return (
-    <div className="team-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+    <div className="team-grid">
       {team.map((slot, i) => (
         <div key={i}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
