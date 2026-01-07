@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">type-covering</string>
-    <string name="title_activity_main">type-covering</string>
-    <string name="package_name">com.typecovering.app</string>
-    <string name="custom_url_scheme">com.typecovering.app</string>
+    <string name="app_name">Poke Helper</string>
+    <string name="title_activity_main">Poke Helper</string>
+    <string name="package_name">com.pokehelper.app</string>
+    <string name="custom_url_scheme">com.pokehelper.app</string>
 </resources>

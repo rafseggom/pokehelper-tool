@@ -472,3 +472,85 @@ export async function searchMoves(query, limit = 20) {
     return []
   }
 }
+
+export async function fetchPokemonAnalysis(nameOrId) {
+  try {
+    const normalized = typeof nameOrId === 'string' 
+      ? nameOrId.toLowerCase().replace(/[^a-z0-9-]/g, '')
+      : nameOrId
+    
+    // 1. Datos base (Stats)
+    const pokemonData = await fetchWithCache(`${BASE_URL}/pokemon/${normalized}`)
+    
+    // 2. Datos de especie (Evoluciones y Variedades)
+    const speciesData = await fetchWithCache(pokemonData.species.url)
+    
+    // 3. Cadena evolutiva
+    const evoData = await fetchWithCache(speciesData.evolution_chain.url)
+    
+    // Calcular BST (Base Stat Total)
+    const bst = pokemonData.stats.reduce((acc, stat) => acc + stat.base_stat, 0)
+    
+    // Detectar variedades (Mega, Gmax, Alola, etc.)
+    const forms = speciesData.varieties
+      .filter(v => !v.is_default) // Quitamos la forma base
+      .map(v => {
+        const n = v.pokemon.name;
+        if (n.includes('-mega')) return 'Megaevolución';
+        if (n.includes('-gmax')) return 'Gigamax';
+        if (n.includes('-alola')) return 'Forma Alola';
+        if (n.includes('-galar')) return 'Forma Galar';
+        if (n.includes('-hisui')) return 'Forma Hisui';
+        if (n.includes('-paldea')) return 'Forma Paldea';
+        return 'Forma Alternativa';
+      });
+      
+    // Limpiar duplicados de formas
+    const uniqueForms = [...new Set(forms)];
+
+    // Lógica simple de evolución: ¿Puede evolucionar más?
+    let canEvolve = false;
+    let evolutionDetails = "Forma final";
+    
+    const checkEvo = (chain) => {
+      // Si encontramos la especie actual en la cadena
+      if (chain.species.name === speciesData.name) {
+        if (chain.evolves_to.length > 0) {
+          canEvolve = true;
+          // Recogemos los nombres de las evoluciones posibles
+          const nextEvos = chain.evolves_to.map(e => {
+              // Intentamos capitalizar el nombre para que se vea bonito
+              const rawName = e.species.name;
+              return rawName.charAt(0).toUpperCase() + rawName.slice(1);
+          }).join(" / ");
+          evolutionDetails = "Evoluciona a " + nextEvos;
+        }
+      } else {
+        // Si no es este, seguimos buscando en los hijos
+        chain.evolves_to.forEach(checkEvo);
+      }
+    }
+    
+    if (evoData && evoData.chain) {
+        checkEvo(evoData.chain);
+    }
+
+    // Sprite
+    const sprite = pokemonData.sprites.other?.['official-artwork']?.front_default || pokemonData.sprites.front_default;
+
+    return {
+      name: pokemonData.name, // Nombre técnico para keys
+      displayName: speciesData.names.find(n => n.language.name === 'es')?.name || pokemonData.name, // Nombre en español
+      sprite,
+      bst,
+      stats: pokemonData.stats,
+      canEvolve,
+      evolutionDetails,
+      forms: uniqueForms
+    }
+
+  } catch (error) {
+    console.error('Error analyzing pokemon:', error)
+    throw error
+  }
+}

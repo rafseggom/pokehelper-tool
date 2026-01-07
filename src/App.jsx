@@ -4,6 +4,8 @@ import DefensiveSummary from './components/DefensiveSummary.jsx'
 import OffensiveCoverage from './components/OffensiveCoverage.jsx'
 import MatchupAnalyzer from './components/MatchupAnalyzer.jsx'
 import Legend from './components/Legend.jsx'
+import WildScanner from './components/WildScanner.jsx'
+import Collapsible from './components/Collapsible.jsx'
 import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount } from './services/pokeapi.js'
 import { TYPES } from './data/types.js'
 import './App.css'
@@ -68,13 +70,18 @@ function App() {
       <header>
         <div className="hero">
           <img className="hero-logo" src={`${base}logo.png`} alt="logo izquierdo" />
-          <h1 className="hero-title">Type Coverage</h1>
+          <h1 className="hero-title">Poke Helper Tool</h1>
           <img className="hero-logo" src={`${base}logo.png`} alt="logo derecho" />
         </div>
         <p className="hero-sub">Analiza defensas y cobertura ofensiva de tu equipo (Gen9, inmunidades y STAB).</p>
       </header>
 
       <main className="content">
+        <section style={{ marginBottom: '20px' }}>
+          <Collapsible title=" Analizador de captura">
+            <WildScanner />
+          </Collapsible>
+        </section>
         <section>
           <h2>Equipo</h2>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
