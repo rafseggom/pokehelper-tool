@@ -77,11 +77,6 @@ function App() {
       </header>
 
       <main className="content">
-        <section style={{ marginBottom: '20px' }}>
-          <Collapsible title=" Analizador de captura">
-            <WildScanner />
-          </Collapsible>
-        </section>
         <section>
           <h2>Equipo</h2>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
@@ -104,6 +99,12 @@ function App() {
 
         <section>
           <MatchupAnalyzer team={filledTeam} />
+        </section>
+
+        <section style={{ marginTop: '16px', marginBottom: '20px' }}>
+          <Collapsible title=" Analizador de captura">
+            <WildScanner team={filledTeam} />
+          </Collapsible>
         </section>
 
         <section>

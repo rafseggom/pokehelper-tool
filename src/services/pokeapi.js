@@ -1,4 +1,8 @@
 // Servicio para interactuar con PokeAPI (Gen 1-9, ~1000+ Pokémon)
+import { computeDefensiveSummary } from '../lib/coverage.js'
+import { ES_LABELS } from '../data/types.js'
+import { effectivenessDual } from '../data/typeChart.js'
+
 const BASE_URL = 'https://pokeapi.co/api/v2'
 
 // Mapeo de tipos EN -> ES (nombres internos a etiquetas)
@@ -473,82 +477,310 @@ export async function searchMoves(query, limit = 20) {
   }
 }
 
-export async function fetchPokemonAnalysis(nameOrId) {
+export async function fetchPokemonAnalysis(nameOrId, team = []) {
   try {
-    const normalized = typeof nameOrId === 'string' 
+    const normalized = typeof nameOrId === 'string'
       ? nameOrId.toLowerCase().replace(/[^a-z0-9-]/g, '')
       : nameOrId
-    
-    // 1. Datos base (Stats)
-    const pokemonData = await fetchWithCache(`${BASE_URL}/pokemon/${normalized}`)
-    
-    // 2. Datos de especie (Evoluciones y Variedades)
-    const speciesData = await fetchWithCache(pokemonData.species.url)
-    
-    // 3. Cadena evolutiva
-    const evoData = await fetchWithCache(speciesData.evolution_chain.url)
-    
-    // Calcular BST (Base Stat Total)
-    const bst = pokemonData.stats.reduce((acc, stat) => acc + stat.base_stat, 0)
-    
-    // Detectar variedades (Mega, Gmax, Alola, etc.)
-    const forms = speciesData.varieties
-      .filter(v => !v.is_default) // Quitamos la forma base
-      .map(v => {
-        const n = v.pokemon.name;
-        if (n.includes('-mega')) return 'Megaevolución';
-        if (n.includes('-gmax')) return 'Gigamax';
-        if (n.includes('-alola')) return 'Forma Alola';
-        if (n.includes('-galar')) return 'Forma Galar';
-        if (n.includes('-hisui')) return 'Forma Hisui';
-        if (n.includes('-paldea')) return 'Forma Paldea';
-        return 'Forma Alternativa';
-      });
-      
-    // Limpiar duplicados de formas
-    const uniqueForms = [...new Set(forms)];
 
-    // Lógica simple de evolución: ¿Puede evolucionar más?
-    let canEvolve = false;
-    let evolutionDetails = "Forma final";
-    
-    const checkEvo = (chain) => {
-      // Si encontramos la especie actual en la cadena
-      if (chain.species.name === speciesData.name) {
-        if (chain.evolves_to.length > 0) {
-          canEvolve = true;
-          // Recogemos los nombres de las evoluciones posibles
-          const nextEvos = chain.evolves_to.map(e => {
-              // Intentamos capitalizar el nombre para que se vea bonito
-              const rawName = e.species.name;
-              return rawName.charAt(0).toUpperCase() + rawName.slice(1);
-          }).join(" / ");
-          evolutionDetails = "Evoluciona a " + nextEvos;
+    const pokemonData = await fetchWithCache(`${BASE_URL}/pokemon/${normalized}`)
+    const speciesData = await fetchWithCache(pokemonData.species.url)
+    const evoData = await fetchWithCache(speciesData.evolution_chain.url)
+
+    const bst = pokemonData.stats.reduce((acc, stat) => acc + stat.base_stat, 0)
+    const avgStat = Math.round(bst / pokemonData.stats.length)
+
+    const formLabels = new Set()
+    const formDetails = []
+    const normalizeFormLabel = (name) => name.replace(/-/g, ' ')
+
+    const addVarietyForms = async (varieties) => {
+      const enriched = await Promise.all(varieties
+        .filter(v => !v.is_default)
+        .map(async (v) => {
+          const n = v.pokemon.name
+          const pokemonInfo = await fetchWithCache(v.pokemon.url)
+          const types = pokemonInfo.types
+            .sort((a, b) => a.slot - b.slot)
+            .map(t => TYPE_MAP_EN_TO_INTERNAL[t.type.name])
+            .filter(Boolean)
+          const sprite = pokemonInfo.sprites.other?.['official-artwork']?.front_default || pokemonInfo.sprites.front_default
+
+          let category = 'Forma alternativa'
+          if (n.includes('-mega')) category = 'Megaevolución'
+          else if (n.includes('-gmax')) category = 'Gigamax'
+          else if (n.includes('-alola')) category = 'Forma Alola'
+          else if (n.includes('-galar')) category = 'Forma Galar'
+          else if (n.includes('-hisui')) category = 'Forma Hisui'
+          else if (n.includes('-paldea')) category = 'Forma Paldea'
+
+          formLabels.add(category)
+
+          return {
+            name: n,
+            displayName: normalizeFormLabel(n),
+            category,
+            sprite,
+            types
+          }
+        }))
+
+      formDetails.push(...enriched)
+    }
+
+    await addVarietyForms(speciesData.varieties)
+
+    const flattenEvolution = (node, depth = 1, acc = []) => {
+      acc.push({ name: node.species.name, stage: depth, evolutionDetails: [] })
+      node.evolves_to.forEach((child) => {
+        const details = child.evolution_details || []
+        const allDetails = details.map((detail) => {
+          const parts = []
+          if (detail.min_level) parts.push(`Nivel ${detail.min_level}`)
+          if (detail.item?.name) parts.push(`Usar ${detail.item.name.replace(/-/g, ' ')}`)
+          if (detail.held_item?.name) parts.push(`Sostener ${detail.held_item.name.replace(/-/g, ' ')}`)
+          if (detail.known_move?.name) parts.push(`Saber ${detail.known_move.name.replace(/-/g, ' ')}`)
+          if (detail.location?.name) parts.push(`En ${detail.location.name.replace(/-/g, ' ')}`)
+          if (detail.min_happiness) parts.push(`Felicidad ${detail.min_happiness}`)
+          if (detail.min_affection) parts.push(`Afecto ${detail.min_affection}`)
+          if (detail.time_of_day && detail.time_of_day !== '') parts.push(`Por la ${detail.time_of_day === 'day' ? 'mañana' : detail.time_of_day === 'night' ? 'noche' : detail.time_of_day}`)
+          return parts.length > 0 ? parts.join(', ') : 'Evoluciona automáticamente'
+        })
+        flattenEvolution(child, depth + 1, acc)
+        if (acc[acc.length - 1].name === child.species.name) {
+          acc[acc.length - 1].evolutionDetails = allDetails
         }
+      })
+      return acc
+    }
+
+    const getEvolutionPaths = (node, path = [], paths = []) => {
+      const nextPath = [...path, node.species.name]
+      if (!node.evolves_to.length) {
+        paths.push(nextPath)
       } else {
-        // Si no es este, seguimos buscando en los hijos
-        chain.evolves_to.forEach(checkEvo);
+        node.evolves_to.forEach((child) => getEvolutionPaths(child, nextPath, paths))
+      }
+      return paths
+    }
+
+    const evolutionNodes = evoData?.chain ? flattenEvolution(evoData.chain) : [{ name: speciesData.name, stage: 1, evolutionDetails: [] }]
+
+    const findEvolutionDetails = (nodeName, node) => {
+      if (node.species.name === nodeName) {
+        return { found: true, details: [] }
+      }
+      for (const child of node.evolves_to) {
+        if (child.species.name === nodeName) {
+          const details = child.evolution_details || []
+          const allDetails = details.map((detail) => {
+            const parts = []
+            if (detail.min_level) parts.push(`Nivel ${detail.min_level}`)
+            if (detail.item?.name) parts.push(`Usar ${detail.item.name.replace(/-/g, ' ')}`)
+            if (detail.held_item?.name) parts.push(`Sostener ${detail.held_item.name.replace(/-/g, ' ')}`)
+            if (detail.known_move?.name) parts.push(`Saber ${detail.known_move.name.replace(/-/g, ' ')}`)
+            if (detail.location?.name) parts.push(`En ${detail.location.name.replace(/-/g, ' ')}`)
+            if (detail.min_happiness) parts.push(`Felicidad ${detail.min_happiness}`)
+            if (detail.min_affection) parts.push(`Afecto ${detail.min_affection}`)
+            if (detail.time_of_day && detail.time_of_day !== '') parts.push(`Por la ${detail.time_of_day === 'day' ? 'mañana' : detail.time_of_day === 'night' ? 'noche' : detail.time_of_day}`)
+            return parts.length > 0 ? parts.join(', ') : 'Evoluciona automáticamente'
+          })
+          return { found: true, details: allDetails }
+        }
+        const result = findEvolutionDetails(nodeName, child)
+        if (result.found) return result
+      }
+      return { found: false, details: [] }
+    }
+
+    const evolutionEntries = await Promise.all(
+      evolutionNodes.map(async ({ name, stage }) => {
+        const speciesInfo = name === speciesData.name
+          ? speciesData
+          : await fetchWithCache(`${BASE_URL}/pokemon-species/${name}`)
+
+        await addVarietyForms(speciesInfo.varieties)
+
+        const spanishName = speciesInfo.names.find((n) => n.language.name === 'es')?.name || name
+        const defaultPokemonName = speciesInfo.varieties.find((v) => v.is_default)?.pokemon?.name || name
+
+        const pokeInfo = name === pokemonData.name
+          ? pokemonData
+          : await fetchWithCache(`${BASE_URL}/pokemon/${defaultPokemonName}`)
+
+        const entryBst = pokeInfo.stats.reduce((acc, stat) => acc + stat.base_stat, 0)
+        const entryAvg = Math.round(entryBst / pokeInfo.stats.length)
+        const entryTypes = pokeInfo.types
+          .sort((a, b) => a.slot - b.slot)
+          .map(t => TYPE_MAP_EN_TO_INTERNAL[t.type.name])
+          .filter(Boolean)
+        const entrySprite = pokeInfo.sprites.other?.['official-artwork']?.front_default || pokeInfo.sprites.front_default
+
+        const evoResult = evoData?.chain ? findEvolutionDetails(name, evoData.chain) : { found: false, details: [] }
+
+        return { name, displayName: spanishName, stage, bst: entryBst, avgStat: entryAvg, types: entryTypes, sprite: entrySprite, stats: pokeInfo.stats, evolutionDetails: evoResult.details }
+      })
+    )
+
+    const evolutionLineMap = new Map()
+    evolutionEntries.forEach((entry) => {
+      const existing = evolutionLineMap.get(entry.name)
+      if (!existing || entry.stage < existing.stage) {
+        evolutionLineMap.set(entry.name, entry)
+      }
+    })
+
+    const evolutionLine = Array.from(evolutionLineMap.values()).sort((a, b) => a.stage - b.stage)
+
+    const displayNameLookup = evolutionLine.reduce((acc, curr) => {
+      acc[curr.name] = curr.displayName
+      return acc
+    }, {})
+
+    const currentStage = evolutionLine.find((e) => e.name === pokemonData.name) || evolutionLine[0]
+    const bestEvolution = evolutionLine.reduce((best, curr) => (curr.bst > best.bst ? curr : best), currentStage)
+
+    const findNode = (node) => {
+      if (node.species.name === speciesData.name) return node
+      for (const child of node.evolves_to) {
+        const match = findNode(child)
+        if (match) return match
+      }
+      return null
+    }
+
+    const currentNode = evoData?.chain ? findNode(evoData.chain) : null
+    const nextSpecies = currentNode?.evolves_to?.map((e) => e.species.name) || []
+    const nextDisplay = nextSpecies.map((n) => displayNameLookup[n] || n)
+
+    const captureVerdict = (() => {
+      if (bestEvolution.bst >= 600) {
+        return {
+          label: 'Captura obligada',
+          color: '#22c55e',
+          explanation: `Puede llegar a ${bestEvolution.displayName} con ${bestEvolution.bst} BST, rendimiento tope de gama.`
+        }
+      }
+      if (bestEvolution.bst >= 520) {
+        return {
+          label: 'Muy recomendable',
+          color: '#2dd4bf',
+          explanation: `Evoluciona hasta ${bestEvolution.displayName} (${bestEvolution.bst} BST); merece la inversión.`
+        }
+      }
+      if (bestEvolution.bst >= 460) {
+        return {
+          label: 'Situacional',
+          color: '#f59e0b',
+          explanation: `Potencial correcto (${bestEvolution.displayName}, ${bestEvolution.bst} BST); captura si cubre huecos de tu equipo.`
+        }
+      }
+      return {
+        label: 'Poca prioridad',
+        color: '#ef4444',
+        explanation: 'El techo de stats es bajo; solo vale si necesitas su tipo o habilidad concreta.'
+      }
+    })()
+
+    const statVerdict = (() => {
+      if (avgStat >= 90) return { label: 'Stats sobresalientes', color: '#22c55e', explanation: 'Promedio alto, rinde bien incluso sin evolucionar.' }
+      if (avgStat >= 75) return { label: 'Stats sólidos', color: '#38b2ac', explanation: 'Promedio competente para la historia y combate casual.' }
+      if (avgStat >= 60) return { label: 'Stats medios', color: '#f59e0b', explanation: 'Necesita soporte o evolución para brillar.' }
+      return { label: 'Stats débiles', color: '#ef4444', explanation: 'Promedio bajo; depende de evolucionar pronto.' }
+    })()
+
+    const statLabels = {
+      hp: 'PS',
+      attack: 'Ataque',
+      defense: 'Defensa',
+      'special-attack': 'Ataque especial',
+      'special-defense': 'Defensa especial',
+      speed: 'Velocidad'
+    }
+
+    const topStats = (() => {
+      const statsSource = bestEvolution.stats || pokemonData.stats
+      const sorted = [...statsSource].sort((a, b) => b.base_stat - a.base_stat).slice(0, 2)
+      return sorted.map((stat) => ({
+        label: statLabels[stat.stat.name] || stat.stat.name,
+        value: stat.base_stat,
+        stageName: bestEvolution.displayName
+      }))
+    })()
+    const strongestStat = topStats[0]
+
+    const evolutionPaths = evoData?.chain
+      ? getEvolutionPaths(evoData.chain)
+          .map((path) => path.map((n) => displayNameLookup[n] || n).join(' → '))
+      : [displayNameLookup[speciesData.name] || speciesData.name]
+
+    const sprite = pokemonData.sprites.other?.['official-artwork']?.front_default || pokemonData.sprites.front_default
+
+    const computeCoverageAdvice = () => {
+      if (!Array.isArray(team) || !team.length) {
+        return { covers: [], uncovered: [], message: 'No hay equipo cargado para evaluar huecos.' }
+      }
+
+      const defensive = computeDefensiveSummary(team)
+
+      const candidateTypes = pokemonData.types
+        .sort((a, b) => a.slot - b.slot)
+        .map((t) => TYPE_MAP_EN_TO_INTERNAL[t.type.name])
+        .filter(Boolean)
+
+      const defensiveWeaknesses = Object.entries(defensive.buckets)
+        .filter(([_, bucket]) => (bucket.x2 + bucket.x4) > 0)
+        .map(([atk]) => atk)
+
+      const defensiveCovered = Object.entries(defensive.buckets)
+        .filter(([_, bucket]) => bucket.x0 > 0 || bucket.x0_5 > 0)
+        .map(([atk]) => atk)
+
+      const covers = defensiveWeaknesses.filter((atk) => {
+        const m = effectivenessDual(atk, candidateTypes)
+        return m !== undefined && m <= 0.5
+      })
+
+      const uncovered = defensiveWeaknesses.filter((atk) => !defensiveCovered.includes(atk))
+
+      const coversButAlreadyCovered = covers.filter((atk) => defensiveCovered.includes(atk))
+      const coversNewGap = covers.filter((atk) => !defensiveCovered.includes(atk))
+
+      if (!covers.length) {
+        return { covers: [], uncovered: [], message: 'No cubre debilidades defensivas del equipo.' }
+      }
+
+      const readable = covers.map((t) => ES_LABELS[t] || t)
+      return {
+        covers,
+        uncovered: coversNewGap,
+        coversButAlreadyCovered,
+        message: `Cubre defensivamente ataques de tipo ${readable.join(', ')}.`
       }
     }
-    
-    if (evoData && evoData.chain) {
-        checkEvo(evoData.chain);
-    }
 
-    // Sprite
-    const sprite = pokemonData.sprites.other?.['official-artwork']?.front_default || pokemonData.sprites.front_default;
+    const coverageAdvice = computeCoverageAdvice()
 
     return {
-      name: pokemonData.name, // Nombre técnico para keys
-      displayName: speciesData.names.find(n => n.language.name === 'es')?.name || pokemonData.name, // Nombre en español
+      name: pokemonData.name,
+      displayName: speciesData.names.find((n) => n.language.name === 'es')?.name || pokemonData.name,
       sprite,
       bst,
+      avgStat,
       stats: pokemonData.stats,
-      canEvolve,
-      evolutionDetails,
-      forms: uniqueForms
+      canEvolve: nextSpecies.length > 0 || bestEvolution.stage > currentStage.stage,
+      evolutionDetails: nextSpecies.length ? `Evoluciona a ${nextDisplay.join(' / ')}` : 'No evoluciona más',
+      evolutionLine,
+      evolutionPaths,
+      bestEvolution,
+      strongestStat,
+      topStats,
+      coverageAdvice,
+      captureVerdict,
+      statVerdict,
+      forms: Array.from(formLabels),
+      formsDetailed: formDetails
     }
-
   } catch (error) {
     console.error('Error analyzing pokemon:', error)
     throw error
