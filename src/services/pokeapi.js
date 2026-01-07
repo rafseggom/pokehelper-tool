@@ -159,7 +159,7 @@ export async function preloadAllMoves(onProgress) {
   try {
     // Cargar lista básica si no existe
     if (!movesListCache) {
-      const listData = await fetchWithCache(`${BASE_URL}/move?limit=920`)
+      const listData = await fetchWithCache(`${BASE_URL}/move?limit=10000`)
       movesListCache = listData.results.map(m => ({
         name: m.name,
         id: parseInt(m.url.split('/').filter(Boolean).pop()),
@@ -233,7 +233,7 @@ export async function searchMoves(query, limit = 20) {
   try {
     // Cargar lista completa de movimientos (solo la primera vez)
     if (!movesListCache) {
-      const listData = await fetchWithCache(`${BASE_URL}/move?limit=920`)
+      const listData = await fetchWithCache(`${BASE_URL}/move?limit=10000`)
       movesListCache = listData.results.map(m => ({
         name: m.name,
         id: parseInt(m.url.split('/').filter(Boolean).pop()),
