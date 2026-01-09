@@ -6,7 +6,9 @@ import MatchupAnalyzer from './components/MatchupAnalyzer.jsx'
 import Legend from './components/Legend.jsx'
 import WildScanner from './components/WildScanner.jsx'
 import Collapsible from './components/Collapsible.jsx'
-import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount } from './services/pokeapi.js'
+import Modal from './components/Modal.jsx'
+import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount, searchPokemon, fetchPokemon, fetchMove } from './services/pokeapi.js'
+import { parsePokepaste } from './lib/pokepaste.js'
 import { TYPES } from './data/types.js'
 import './App.css'
 
@@ -33,6 +35,9 @@ function App() {
 
   const [loadingMoves, setLoadingMoves] = useState(false)
   const [movesProgress, setMovesProgress] = useState({ current: 0, total: 0 })
+  const [showPasteModal, setShowPasteModal] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [importingPaste, setImportingPaste] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('team', JSON.stringify(team))
@@ -65,6 +70,89 @@ function App() {
 
   const movesPreloaded = areMovesPreloaded()
 
+  const handleImportPokepaste = async () => {
+    if (!pasteText.trim()) {
+      alert('Por favor, pega un pokepaste válido')
+      return
+    }
+
+    setImportingPaste(true)
+    try {
+      const parsedPokemon = parsePokepaste(pasteText)
+      
+      if (parsedPokemon.length === 0) {
+        alert('No se encontraron Pokémon en el texto pegado')
+        return
+      }
+
+      if (parsedPokemon.length > 6) {
+        alert('El pokepaste contiene más de 6 Pokémon. Solo se importarán los primeros 6.')
+      }
+
+      const newTeam = []
+      
+      for (let i = 0; i < Math.min(6, parsedPokemon.length); i++) {
+        const { name, moves: moveNames } = parsedPokemon[i]
+        
+        // Buscar el Pokémon
+        const pokemonResults = await searchPokemon(name, 1)
+        if (pokemonResults.length === 0) {
+          console.warn(`No se encontró el Pokémon: ${name}`)
+          newTeam.push({ pokemon: null, moves: [] })
+          continue
+        }
+
+        // Obtener los datos completos del Pokémon (incluye types, sprite, etc.)
+        let pokemonData = null
+        try {
+          pokemonData = await fetchPokemon(pokemonResults[0].name)
+        } catch (error) {
+          console.warn(`Error al cargar datos del Pokémon ${name}:`, error)
+          newTeam.push({ pokemon: null, moves: [] })
+          continue
+        }
+        
+        // Buscar los movimientos
+        const movesData = []
+        for (const moveName of moveNames) {
+          try {
+            // Intentar buscar el movimiento directamente
+            const normalizedMoveName = moveName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+            const moveData = await fetchMove(normalizedMoveName)
+            movesData.push({
+              name: moveData.name,
+              displayName: moveData.displayName,
+              type: moveData.type,
+              defensive: moveData.defensive
+            })
+          } catch {
+            console.warn(`No se encontró el movimiento: ${moveName}`)
+          }
+        }
+
+        newTeam.push({
+          pokemon: pokemonData,
+          moves: movesData
+        })
+      }
+
+      // Rellenar con espacios vacíos hasta 6
+      while (newTeam.length < 6) {
+        newTeam.push({ pokemon: null, moves: [] })
+      }
+
+      setTeam(newTeam)
+      setShowPasteModal(false)
+      setPasteText('')
+      alert(`✅ Equipo importado: ${parsedPokemon.slice(0, 6).map(p => p.name).join(', ')}`)
+    } catch (error) {
+      console.error('Error al importar pokepaste:', error)
+      alert(`❌ Error al importar: ${error.message}`)
+    } finally {
+      setImportingPaste(false)
+    }
+  }
+
   return (
     <div className="layout">
       <header>
@@ -79,7 +167,7 @@ function App() {
       <main className="content">
         <section>
           <h2>Equipo</h2>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
             <button 
               className="ghost-btn" 
               onClick={handlePreloadMoves}
@@ -92,7 +180,10 @@ function App() {
                   ? `✓ Ataques en caché (${getCachedMovesCount()})` 
                   : 'Cachear ataques'}
             </button>
-            <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="ghost-btn" onClick={() => setShowPasteModal(true)}>Importar Pokepaste</button>
+              <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
+            </div>
           </div>
           <TeamEditor team={filledTeam} onChange={setTeam} />
         </section>
@@ -117,6 +208,56 @@ function App() {
           </div>
         </section>
       </main>
+
+      <Modal 
+        open={showPasteModal} 
+        onClose={() => {
+          setShowPasteModal(false)
+          setPasteText('')
+        }} 
+        title="Importar Pokepaste"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+            Pega aquí tu equipo en formato pokepaste. Solo se importarán los nombres de Pokémon y sus movimientos.
+          </p>
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder="Annihilape (M) @ Black Belt&#10;Ability: Storm Drain&#10;- Flying Press&#10;- Lunge&#10;&#10;Tatsugiri (M) @ Focus Sash&#10;- Swift&#10;- Scald&#10;..."
+            rows={12}
+            style={{
+              width: '100%',
+              padding: '8px',
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              resize: 'vertical'
+            }}
+          />
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button 
+              className="ghost-btn" 
+              onClick={() => {
+                setShowPasteModal(false)
+                setPasteText('')
+              }}
+              disabled={importingPaste}
+            >
+              Cancelar
+            </button>
+            <button 
+              className="ghost-btn" 
+              onClick={handleImportPokepaste}
+              disabled={importingPaste || !pasteText.trim()}
+              style={{ fontWeight: 'bold' }}
+            >
+              {importingPaste ? 'Importando...' : 'Importar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <footer>
         <div className="footer-info">

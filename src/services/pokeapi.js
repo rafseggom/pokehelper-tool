@@ -729,19 +729,17 @@ export async function fetchPokemonAnalysis(nameOrId, team = []) {
         .filter(Boolean)
 
       const defensiveWeaknesses = Object.entries(defensive.buckets)
-        .filter(([_, bucket]) => (bucket.x2 + bucket.x4) > 0)
+        .filter(([, bucket]) => (bucket.x2 + bucket.x4) > 0)
         .map(([atk]) => atk)
 
       const defensiveCovered = Object.entries(defensive.buckets)
-        .filter(([_, bucket]) => bucket.x0 > 0 || bucket.x0_5 > 0)
+        .filter(([, bucket]) => bucket.x0 > 0 || bucket.x0_5 > 0)
         .map(([atk]) => atk)
 
       const covers = defensiveWeaknesses.filter((atk) => {
         const m = effectivenessDual(atk, candidateTypes)
         return m !== undefined && m <= 0.5
       })
-
-      const uncovered = defensiveWeaknesses.filter((atk) => !defensiveCovered.includes(atk))
 
       const coversButAlreadyCovered = covers.filter((atk) => defensiveCovered.includes(atk))
       const coversNewGap = covers.filter((atk) => !defensiveCovered.includes(atk))
