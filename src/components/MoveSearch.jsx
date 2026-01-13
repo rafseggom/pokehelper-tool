@@ -71,11 +71,12 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
 
   if (value && value.name) {
     // Determinar icono de clase de daño
+    const base = import.meta.env.BASE_URL || '/'
     let damageClassIcon = null
     if (value.damageClass === 'physical') {
-      damageClassIcon = '/icons/atfis.png'
+      damageClassIcon = `${base}icons/atfis.png`
     } else if (value.damageClass === 'special') {
-      damageClassIcon = '/icons/atesp.png'
+      damageClassIcon = `${base}icons/atesp.png`
     }
 
     return (
