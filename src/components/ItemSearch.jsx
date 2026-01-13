@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { searchMoves, fetchMove } from '../services/pokeapi.js'
-import TypeIcon from './TypeIcon.jsx'
-import { ES_LABELS } from '../data/types.js'
+import { searchItems, fetchItem } from '../services/pokeapi.js'
 
 /**
- * Componente de búsqueda de movimientos con autocomplete
- * Al seleccionar, obtiene datos completos (tipo, clase de daño) de la API
+ * Componente de búsqueda de objetos con autocomplete y tooltip
  */
-export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
+export default function ItemSearch({ value, onChange }) {
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(false)
@@ -37,7 +34,7 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
 
     const timer = setTimeout(async () => {
       setLoading(true)
-      const results = await searchMoves(query, 15)
+      const results = await searchItems(query, 10)
       setSuggestions(results)
       setShowDropdown(results.length > 0)
       setLoading(false)
@@ -46,16 +43,16 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
     return () => clearTimeout(timer)
   }, [query])
 
-  const handleSelect = async (moveName) => {
+  const handleSelect = async (itemName) => {
     setLoading(true)
     setShowDropdown(false)
     setQuery('')
     
     try {
-      const data = await fetchMove(moveName)
+      const data = await fetchItem(itemName)
       onChange(data)
     } catch (error) {
-      alert(`Error al cargar ${moveName}: ${error.message}`)
+      alert(`Error al cargar ${itemName}: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -67,26 +64,14 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
     setSuggestions([])
   }
 
-  const hasStab = value && value.type && pokemonTypes.includes(value.type)
-
   if (value && value.name) {
-    // Determinar icono de clase de daño
-    let damageClassIcon = null
-    if (value.damageClass === 'physical') {
-      damageClassIcon = '/icons/atfis.png'
-    } else if (value.damageClass === 'special') {
-      damageClassIcon = '/icons/atesp.png'
-    }
-
     return (
-      <div className="move-selected">
+      <div className="item-selected">
         <div className="tooltip-wrapper">
-          <div className="move-info-row">
-            {damageClassIcon && <img src={damageClassIcon} alt={value.damageClass} className="damage-class-icon" />}
-            <TypeIcon type={value.type} size={20} />
+          <div className="item-info">
+            {value.sprite && <img src={value.sprite} alt={value.displayName} className="item-sprite" />}
+            <span className="item-label">Objeto:</span>
             <strong>{value.displayName}</strong>
-            {hasStab && <span className="stab-badge">STAB</span>}
-            {value.defensive && <span className="defensive-badge">Defensivo</span>}
           </div>
           {value.effect && <div className="tooltip-text">{value.effect}</div>}
         </div>
@@ -96,12 +81,13 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
   }
 
   return (
-    <div className="move-search-container">
+    <div className="item-search-container">
+      <span className="search-label">Objeto:</span>
       <input
         ref={inputRef}
         type="text"
-        className="move-search-input"
-        placeholder="Buscar movimiento..."
+        className="item-search-input"
+        placeholder="Buscar objeto..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
@@ -109,16 +95,16 @@ export default function MoveSearch({ value, onChange, pokemonTypes = [] }) {
       {loading && <span className="search-spinner-small">⏳</span>}
       
       {showDropdown && suggestions.length > 0 && (
-        <div ref={dropdownRef} className="move-dropdown">
-          {suggestions.map(s => (
-            <button
-              key={s.name}
-              className="move-suggestion"
-              onClick={() => handleSelect(s.name)}
+        <div ref={dropdownRef} className="item-dropdown">
+          {suggestions.map((item) => (
+            <div
+              key={item.id}
+              className="item-dropdown-item"
+              onClick={() => handleSelect(item.name)}
             >
-              <span className="move-suggestion-name">{s.displayName}</span>
-              <span className="move-suggestion-en">({s.name})</span>
-            </button>
+              <strong>{item.displayName}</strong>
+              <span className="item-name-en">{item.name}</span>
+            </div>
           ))}
         </div>
       )}

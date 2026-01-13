@@ -7,12 +7,13 @@ import Legend from './components/Legend.jsx'
 import WildScanner from './components/WildScanner.jsx'
 import Collapsible from './components/Collapsible.jsx'
 import Modal from './components/Modal.jsx'
-import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount, searchPokemon, fetchPokemon, fetchMove } from './services/pokeapi.js'
+import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount, searchPokemon, fetchPokemon, fetchMove, fetchAbility, fetchNature, fetchItem } from './services/pokeapi.js'
 import { parsePokepaste } from './lib/pokepaste.js'
 import { TYPES } from './data/types.js'
+import packageJson from '../package.json' with { type: 'json' }
 import './App.css'
 
-const EMPTY_TEAM = Array.from({ length: 6 }, () => ({ pokemon: null, moves: [] }))
+const EMPTY_TEAM = Array.from({ length: 6 }, () => ({ pokemon: null, moves: [], ability: null, nature: null, item: null }))
 
 function App() {
   const [team, setTeam] = useState(() => {
@@ -21,10 +22,14 @@ function App() {
       try {
         const parsed = JSON.parse(stored)
         return parsed.map(slot => {
-          if (slot.pokemon || !slot.types) {
-            return slot 
+          // Retrocompatibilidad: asegurar que todos los campos existen
+          return {
+            pokemon: slot.pokemon || null,
+            moves: slot.moves || [],
+            ability: slot.ability || null,
+            nature: slot.nature || null,
+            item: slot.item || null
           }
-          return { pokemon: null, moves: [] }
         })
       } catch {
         return EMPTY_TEAM
@@ -43,7 +48,13 @@ function App() {
     localStorage.setItem('team', JSON.stringify(team))
   }, [team])
 
-  const filledTeam = useMemo(() => team.map((s) => ({ pokemon: s.pokemon || null, moves: s.moves || [] })), [team])
+  const filledTeam = useMemo(() => team.map((s) => ({
+    pokemon: s.pokemon || null,
+    moves: s.moves || [],
+    ability: s.ability || null,
+    nature: s.nature || null,
+    item: s.item || null
+  })), [team])
 
   const base = import.meta.env.BASE_URL || '/'
 
@@ -92,23 +103,23 @@ function App() {
       const newTeam = []
       
       for (let i = 0; i < Math.min(6, parsedPokemon.length); i++) {
-        const { name, moves: moveNames } = parsedPokemon[i]
+        const { name, moves: moveNames, ability: abilityName, nature: natureName, item: itemName } = parsedPokemon[i]
         
         // Buscar el Pokémon
         const pokemonResults = await searchPokemon(name, 1)
         if (pokemonResults.length === 0) {
           console.warn(`No se encontró el Pokémon: ${name}`)
-          newTeam.push({ pokemon: null, moves: [] })
+          newTeam.push({ pokemon: null, moves: [], ability: null, nature: null, item: null })
           continue
         }
 
-        // Obtener los datos completos del Pokémon (incluye types, sprite, etc.)
+        // Obtener los datos completos del Pokémon (incluye types, sprite, baseStats, etc.)
         let pokemonData = null
         try {
           pokemonData = await fetchPokemon(pokemonResults[0].name)
         } catch (error) {
           console.warn(`Error al cargar datos del Pokémon ${name}:`, error)
-          newTeam.push({ pokemon: null, moves: [] })
+          newTeam.push({ pokemon: null, moves: [], ability: null, nature: null, item: null })
           continue
         }
         
@@ -123,22 +134,60 @@ function App() {
               name: moveData.name,
               displayName: moveData.displayName,
               type: moveData.type,
-              defensive: moveData.defensive
+              defensive: moveData.defensive,
+              damageClass: moveData.damageClass,
+              effect: moveData.effect
             })
           } catch {
             console.warn(`No se encontró el movimiento: ${moveName}`)
           }
         }
 
+        // Buscar habilidad si existe
+        let abilityData = null
+        if (abilityName) {
+          try {
+            const normalizedAbility = abilityName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+            abilityData = await fetchAbility(normalizedAbility)
+          } catch {
+            console.warn(`No se encontró la habilidad: ${abilityName}`)
+          }
+        }
+
+        // Buscar naturaleza si existe
+        let natureData = null
+        if (natureName) {
+          try {
+            const normalizedNature = natureName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+            natureData = await fetchNature(normalizedNature)
+          } catch {
+            console.warn(`No se encontró la naturaleza: ${natureName}`)
+          }
+        }
+
+        // Buscar objeto si existe
+        let itemData = null
+        if (itemName) {
+          try {
+            const normalizedItem = itemName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+            itemData = await fetchItem(normalizedItem)
+          } catch {
+            console.warn(`No se encontró el objeto: ${itemName}`)
+          }
+        }
+
         newTeam.push({
           pokemon: pokemonData,
-          moves: movesData
+          moves: movesData,
+          ability: abilityData,
+          nature: natureData,
+          item: itemData
         })
       }
 
       // Rellenar con espacios vacíos hasta 6
       while (newTeam.length < 6) {
-        newTeam.push({ pokemon: null, moves: [] })
+        newTeam.push({ pokemon: null, moves: [], ability: null, nature: null, item: null })
       }
 
       setTeam(newTeam)
@@ -261,7 +310,9 @@ function App() {
 
       <footer>
         <div className="footer-info">
-          <span>Tipos: {TYPES.length} | Sin habilidades ni items | Datos Gen9</span>
+          <span>PokeHelper v{packageJson.version}</span>
+          <span className="footer-separator">•</span>
+          <span>Datos Gen9</span>
         </div>
         <div className="footer-links">
           <a 

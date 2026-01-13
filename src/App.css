@@ -328,7 +328,7 @@ button:disabled {
 
 footer {
   margin-top: 24px;
-  padding: 16px 0;
+  padding: 16px 0 40px;
   border-top: 1px solid #222430;
   display: flex;
   flex-direction: column;
@@ -339,12 +339,21 @@ footer {
 .footer-info {
   color: #8f95a5;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-separator {
+  opacity: 0.5;
 }
 
 .footer-links {
   display: flex;
   gap: 20px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .footer-link {
@@ -1173,4 +1182,263 @@ footer {
 
 .team-grid, section {
   overflow: visible !important;
+}
+
+/* ===== Nuevos estilos para detalles de Pokémon ===== */
+
+/* Sección de detalles adicionales (habilidad, naturaleza, objeto, stats) */
+.slot-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #222430;
+}
+
+/* Contenedores de búsqueda para habilidad, naturaleza y objeto */
+.ability-search-container,
+.nature-search-container,
+.item-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.search-label {
+  font-size: 0.85rem;
+  color: #9ea8bc;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.ability-search-input,
+.nature-search-input,
+.item-search-input {
+  flex: 1;
+  padding: 6px 10px;
+  background: #13151d;
+  border: 1px solid #2a2f40;
+  border-radius: 8px;
+  color: #e9ebf0;
+  font-size: 0.85rem;
+  transition: all 120ms ease;
+}
+
+.ability-search-input:focus,
+.nature-search-input:focus,
+.item-search-input:focus {
+  outline: none;
+  border-color: #5a8fc7;
+  background: #181a22;
+}
+
+/* Elementos seleccionados */
+.ability-selected,
+.nature-selected,
+.item-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #13151d;
+  border: 1px solid #2a2f40;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.ability-info,
+.nature-info,
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.ability-label,
+.nature-label,
+.item-label {
+  color: #9ea8bc;
+  font-size: 0.85rem;
+}
+
+.nature-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.stat-up {
+  color: #7fd67f;
+}
+
+.stat-down {
+  color: #ff8585;
+}
+
+.nature-neutral {
+  color: #9ea8bc;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.item-sprite {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Dropdowns de búsqueda */
+.ability-dropdown,
+.nature-dropdown,
+.item-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #1a1d26;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.75);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.ability-dropdown-item,
+.nature-dropdown-item,
+.item-dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 100ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ability-dropdown-item:hover,
+.nature-dropdown-item:hover,
+.item-dropdown-item:hover {
+  background: #242833;
+}
+
+.ability-name-en,
+.item-name-en {
+  font-size: 0.75rem;
+  color: #7a8294;
+}
+
+/* Tooltip wrapper con CSS puro */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: #2a2f40;
+  color: #e9ebf0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  max-width: 250px;
+  width: max-content;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 200ms ease;
+  border: 1px solid #3e4554;
+}
+
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #2a2f40;
+}
+
+.tooltip-wrapper:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Stats destacadas del Pokémon */
+.pokemon-top-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #13151d;
+  border: 1px solid #2a2f40;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.top-stats-label {
+  color: #9ea8bc;
+  font-size: 0.85rem;
+}
+
+/* Icono de clase de daño (físico/especial) */
+.damage-class-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Ajustes para móvil */
+@media (max-width: 768px) {
+  .slot-card__details {
+    gap: 10px;
+  }
+
+  .ability-info,
+  .nature-info,
+  .item-info {
+    flex-wrap: wrap;
+  }
+
+  .tooltip-text {
+    max-width: 200px;
+    font-size: 0.75rem;
+  }
+
+  footer {
+    padding: 16px 0 80px;
+    gap: 16px;
+  }
+
+  .footer-info {
+    font-size: 0.85rem;
+  }
+
+  .footer-links {
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .footer-link {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
 }

@@ -153,11 +153,18 @@ export async function fetchPokemon(nameOrId) {
     const sprite = data.sprites.other?.['official-artwork']?.front_default
       || data.sprites.front_default
 
+    // Stats base del Pokémon
+    const baseStats = data.stats.map(s => ({
+      name: s.stat.name,
+      value: s.base_stat
+    }))
+
     return {
       name: data.name,
       displayName: spanishName,
       sprite,
-      types
+      types,
+      baseStats
     }
   } catch (error) {
     console.error('Error fetching pokemon:', error)
@@ -197,7 +204,7 @@ export async function searchPokemon(query, limit = 20) {
 /**
  * Obtiene datos de un movimiento por nombre o ID
  * @param {string|number} nameOrId - Nombre (en inglés, minúsculas) o ID del movimiento
- * @returns {Promise<{name: string, displayName: string, type: string, defensive: boolean}>}
+ * @returns {Promise<{name: string, displayName: string, type: string, defensive: boolean, damageClass: string, effect: string}>}
  */
 export async function fetchMove(nameOrId) {
   try {
@@ -217,12 +224,31 @@ export async function fetchMove(nameOrId) {
 
     // Movimientos defensivos son aquellos con damage_class === 'status'
     const defensive = data.damage_class.name === 'status'
+    
+    // Clase de daño (physical, special, status)
+    const damageClass = data.damage_class.name
+
+    // Obtener descripción con múltiples fallbacks (español primero, luego inglés)
+    const spanishFlavorEntry = data.flavor_text_entries?.find(e => e.language.name === 'es')
+    const englishFlavorEntry = data.flavor_text_entries?.find(e => e.language.name === 'en')
+    const spanishEffectEntry = data.effect_entries?.find(e => e.language.name === 'es')
+    const englishEffectEntry = data.effect_entries?.find(e => e.language.name === 'en')
+    
+    const spanishEffect = spanishFlavorEntry?.flavor_text?.replace(/\n/g, ' ')
+      || spanishEffectEntry?.short_effect?.replace(/\n/g, ' ')
+      || spanishEffectEntry?.effect?.replace(/\n/g, ' ')
+      || englishFlavorEntry?.flavor_text?.replace(/\n/g, ' ')
+      || englishEffectEntry?.short_effect?.replace(/\n/g, ' ')
+      || englishEffectEntry?.effect?.replace(/\n/g, ' ')
+      || ''
 
     return {
       name: data.name,
       displayName: spanishName,
       type,
-      defensive
+      defensive,
+      damageClass,
+      effect: spanishEffect
     }
   } catch (error) {
     console.error('Error fetching move:', error)
@@ -782,5 +808,291 @@ export async function fetchPokemonAnalysis(nameOrId, team = []) {
   } catch (error) {
     console.error('Error analyzing pokemon:', error)
     throw error
+  }
+}
+
+/**
+ * Obtiene datos de una naturaleza por nombre o ID
+ * @param {string|number} nameOrId - Nombre (en inglés, minúsculas) o ID de la naturaleza
+ * @returns {Promise<{name: string, displayName: string, increasedStat: string|null, decreasedStat: string|null}>}
+ */
+export async function fetchNature(nameOrId) {
+  try {
+    // No normalizar - usar el nombre exacto como viene de la API
+    const identifier = typeof nameOrId === 'string'
+      ? nameOrId.toLowerCase()
+      : nameOrId
+
+    const data = await fetchWithCache(`${BASE_URL}/nature/${identifier}`)
+
+    // Obtener nombre en español
+    const spanishName = data.names.find(n => n.language.name === 'es')?.name || data.name
+
+    // Stats afectadas (pueden ser null si es naturaleza neutra)
+    const increasedStat = data.increased_stat?.name || null
+    const decreasedStat = data.decreased_stat?.name || null
+
+    return {
+      name: data.name,
+      displayName: spanishName,
+      increasedStat,
+      decreasedStat
+    }
+  } catch (error) {
+    console.error('Error fetching nature:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca naturalezas por nombre (para autocomplete)
+ * @param {string} query - Texto de búsqueda
+ * @param {number} limit - Límite de resultados
+ * @returns {Promise<Array<{name: string, displayName: string, id: number}>>}
+ */
+let naturesListCache = null
+
+export async function searchNatures(query, limit = 20) {
+  try {
+    // Cargar lista de naturalezas (solo la primera vez)
+    if (!naturesListCache) {
+      const data = await fetchWithCache(`${BASE_URL}/nature?limit=25`)
+      naturesListCache = await Promise.all(
+        data.results.map(async (n) => {
+          const natureData = await fetchWithCache(n.url)
+          const spanishName = natureData.names.find(name => name.language.name === 'es')?.name || n.name
+          return {
+            name: n.name,
+            displayName: spanishName,
+            id: parseInt(n.url.split('/').filter(Boolean).pop()),
+            spanishLower: normalizeText(spanishName)
+          }
+        })
+      )
+    }
+
+    const normalized = normalizeText(query.trim())
+
+    const matches = naturesListCache
+      .filter(n => 
+        n.name.includes(normalized) || 
+        n.spanishLower.includes(normalized)
+      )
+      .slice(0, limit)
+
+    return matches
+  } catch (error) {
+    console.error('Error searching natures:', error)
+    return []
+  }
+}
+
+/**
+ * Obtiene datos de una habilidad por nombre o ID
+ * @param {string|number} nameOrId - Nombre (en inglés, minúsculas) o ID de la habilidad
+ * @returns {Promise<{name: string, displayName: string, effect: string}>}
+ */
+export async function fetchAbility(nameOrId) {
+  try {
+    // No normalizar - usar el nombre exacto como viene de la API
+    const identifier = typeof nameOrId === 'string'
+      ? nameOrId.toLowerCase()
+      : nameOrId
+
+    const data = await fetchWithCache(`${BASE_URL}/ability/${identifier}`)
+
+    // Obtener nombre en español
+    const spanishName = data.names.find(n => n.language.name === 'es')?.name || data.name
+
+    // Obtener descripción en español (effect_entries tiene el efecto real)
+    const spanishEffectEntry = data.effect_entries?.find(e => e.language.name === 'es')
+    const spanishEffect = spanishEffectEntry?.effect?.replace(/\n/g, ' ') 
+      || spanishEffectEntry?.short_effect?.replace(/\n/g, ' ')
+      || data.effect_entries?.find(e => e.language.name === 'en')?.short_effect?.replace(/\n/g, ' ')
+      || ''
+
+    return {
+      name: data.name,
+      displayName: spanishName,
+      effect: spanishEffect
+    }
+  } catch (error) {
+    console.error('Error fetching ability:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca habilidades por nombre (para autocomplete)
+ * @param {string} query - Texto de búsqueda
+ * @param {number} limit - Límite de resultados
+ * @returns {Promise<Array<{name: string, displayName: string, id: number}>>}
+ */
+let abilitiesListCache = null
+
+export async function searchAbilities(query, limit = 20) {
+  try {
+    // Cargar lista de habilidades (solo la primera vez)
+    if (!abilitiesListCache) {
+      const data = await fetchWithCache(`${BASE_URL}/ability?limit=400`)
+      // Cargar nombres en español de forma asíncrona (puede tardar)
+      abilitiesListCache = data.results.map(a => ({
+        name: a.name,
+        displayName: null, // Se cargará bajo demanda
+        id: parseInt(a.url.split('/').filter(Boolean).pop()),
+        url: a.url
+      }))
+    }
+
+    const normalized = normalizeText(query.trim())
+
+    // Buscar primero por nombre en inglés (rápido)
+    const matchesByEnglish = abilitiesListCache
+      .filter(a => a.name.includes(normalized))
+      .slice(0, limit)
+
+    // Cargar nombres en español de los resultados
+    const results = await Promise.all(
+      matchesByEnglish.map(async (a) => {
+        if (!a.displayName) {
+          try {
+            const abilityData = await fetchWithCache(a.url)
+            const spanishName = abilityData.names.find(n => n.language.name === 'es')?.name || a.name
+            a.displayName = spanishName
+            a.spanishLower = normalizeText(spanishName)
+          } catch {
+            a.displayName = a.name
+            a.spanishLower = a.name
+          }
+        }
+        return a
+      })
+    )
+
+    return results
+  } catch (error) {
+    console.error('Error searching abilities:', error)
+    return []
+  }
+}
+
+/**
+ * Obtiene datos de un objeto por nombre o ID
+ * @param {string|number} nameOrId - Nombre (en inglés, exacto como viene de la API) o ID del objeto
+ * @returns {Promise<{name: string, displayName: string, effect: string, sprite: string|null}>}
+ */
+export async function fetchItem(nameOrId) {
+  try {
+    // No normalizar - usar el nombre exacto como viene de la API
+    const identifier = typeof nameOrId === 'string'
+      ? nameOrId.toLowerCase()
+      : nameOrId
+
+    const data = await fetchWithCache(`${BASE_URL}/item/${identifier}`)
+
+    // Obtener nombre en español
+    const spanishName = data.names?.find(n => n.language.name === 'es')?.name || data.name
+
+    // Obtener descripción en español (effect_entries tiene el efecto real del objeto)
+    const spanishEffectEntry = data.effect_entries?.find(e => e.language.name === 'es')
+    const spanishEffect = spanishEffectEntry?.effect?.replace(/\n/g, ' ') 
+      || spanishEffectEntry?.short_effect?.replace(/\n/g, ' ')
+      || data.effect_entries?.find(e => e.language.name === 'en')?.short_effect?.replace(/\n/g, ' ')
+      || ''
+
+    // Sprite del objeto
+    const sprite = data.sprites?.default || null
+
+    return {
+      name: data.name,
+      displayName: spanishName,
+      effect: spanishEffect,
+      sprite
+    }
+  } catch (error) {
+    console.error('Error fetching item:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca objetos por nombre (para autocomplete)
+ * Solo muestra objetos equipables (held items), no medicinas ni bayas
+ * @param {string} query - Texto de búsqueda
+ * @param {number} limit - Límite de resultados
+ * @returns {Promise<Array<{name: string, displayName: string, id: number}>>}
+ */
+let itemsListCache = null
+
+export async function searchItems(query, limit = 20) {
+  try {
+    // Cargar lista de objetos equipables (solo la primera vez)
+    if (!itemsListCache) {
+      // Obtener lista completa de items
+      const data = await fetchWithCache(`${BASE_URL}/item?limit=2000`)
+      
+      // Filtrar solo items equipables (held-items)
+      // Esto excluye medicinas, bayas, TMs, objetos de evolución, etc.
+      const heldItemsPromises = data.results.map(async (i) => {
+        try {
+          const itemData = await fetchWithCache(i.url)
+          // Verificar si es un item equipable
+          const isHeldItem = itemData.attributes?.some(attr => attr.name === 'holdable') || false
+          const category = itemData.category?.name || ''
+          
+          // Incluir solo items equipables y excluir categorías no deseadas
+          if (isHeldItem || 
+              category === 'held-items' || 
+              category === 'choice' ||
+              category === 'effort-drop' ||
+              category === 'type-enhancement' ||
+              category === 'plates' ||
+              category === 'species-specific' ||
+              category === 'training' ||
+              category === 'bad-held-items' ||
+              category === 'in-a-pinch' ||
+              category === 'stat-boosts' ||
+              category === 'mega-stones' ||
+              category === 'memories' ||
+              category === 'z-crystals' ||
+              category === 'jewels' ||
+              category === 'scarves') {
+            const spanishName = itemData.names.find(n => n.language.name === 'es')?.name || i.name
+            return {
+              name: i.name,
+              displayName: spanishName,
+              id: parseInt(i.url.split('/').filter(Boolean).pop()),
+              url: i.url,
+              spanishLower: normalizeText(spanishName),
+              category
+            }
+          }
+          return null
+        } catch (error) {
+          console.warn(`Error loading item ${i.name}:`, error)
+          return null
+        }
+      })
+      
+      const allItems = await Promise.all(heldItemsPromises)
+      itemsListCache = allItems.filter(item => item !== null)
+      
+      console.log(`✅ ${itemsListCache.length} objetos equipables cargados`)
+    }
+
+    const normalized = normalizeText(query.trim())
+
+    // Buscar por nombre en inglés o español
+    const matches = itemsListCache
+      .filter(i => 
+        i.name.includes(normalized) || 
+        i.spanishLower.includes(normalized)
+      )
+      .slice(0, limit)
+
+    return matches
+  } catch (error) {
+    console.error('Error searching items:', error)
+    return []
   }
 }

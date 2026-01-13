@@ -10,7 +10,7 @@ export default function TeamEditor({ team, onChange }) {
       {team.map((slot, i) => (
         <div key={i}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-            <button className="ghost-btn" onClick={() => setSlot(i, { types: [], moves: [] })}>Resetear Pokémon {i + 1}</button>
+            <button className="ghost-btn" onClick={() => setSlot(i, { pokemon: null, moves: [], ability: null, nature: null, item: null })}>Resetear Pokémon {i + 1}</button>
           </div>
           <SlotCard slot={slot} onChange={(s) => setSlot(i, s)} index={i} />
         </div>
