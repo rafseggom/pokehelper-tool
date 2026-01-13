@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="./public/logo.png" alt="PokeHelper Logo" width="120" />
-  <p><strong>Herramienta integral de análisis de equipos Pokémon (Gen 9)</strong></p>
+  <p><strong>Herramienta de análisis de equipos Pokémon (Gen 9)</strong></p>
 </div>
 
 ## Descripción
