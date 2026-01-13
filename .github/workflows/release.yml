@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: "build-deploy"
+  cancel-in-progress: false
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -24,6 +28,28 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update package.json version
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        run: |
+          VERSION=${{ steps.tag_version.outputs.new_tag }}
+          VERSION=${VERSION#v}
+          npm version $VERSION --no-git-tag-version
+
+      - name: Commit and push package.json update
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json package-lock.json
+          git commit -m "chore: update version to ${{ steps.tag_version.outputs.new_tag }} [skip ci]"
+          git push
 
       - name: Build Web App
         run: npm run build
@@ -44,12 +70,6 @@ jobs:
         run: |
           cd android
           ./gradlew assembleDebug
-
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create a GitHub release
         uses: softprops/action-gh-release@v2
