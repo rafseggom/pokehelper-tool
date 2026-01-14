@@ -110,6 +110,40 @@ const MANUAL_TRANSLATIONS = {
   "ivy-cudgel": "Garrote Hiedra"
 };
 
+// Alias manuales para nombres de Pokémon (permiten búsqueda en español y sin guiones)
+const MANUAL_POKEMON_ALIASES = {
+  // Paradojas pasado
+  bramaluna: 'roaring-moon',
+  colmilargo: 'great-tusk',
+  colagrito: 'scream-tail',
+  furioseta: 'brute-bonnet',
+  melenaleta: 'flutter-mane',
+  reptalada: 'slither-wing',
+  pelarena: 'sandy-shocks',
+  // Paradojas futuro
+  ferrodada: 'iron-treads',
+  ferrosaco: 'iron-bundle',
+  ferropalmas: 'iron-hands',
+  ferrocuello: 'iron-jugulis',
+  ferropolilla: 'iron-moth',
+  ferropuas: 'iron-thorns',
+  ferropaladin: 'iron-valiant',
+  // Extras
+  ondulagua: 'walking-wake',
+  ferroverdor: 'iron-leaves'
+};
+
+// Normaliza identificadores aceptando espacios, tildes y mayúsculas
+const normalizeIdentifier = (value) => {
+  if (typeof value !== 'string') return value
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+};
+
 // Cache simple para evitar requests repetidos
 const cache = new Map()
 
@@ -133,11 +167,12 @@ async function fetchWithCache(url) {
  */
 export async function fetchPokemon(nameOrId) {
   try {
-    const normalized = typeof nameOrId === 'string'
-      ? nameOrId.toLowerCase().replace(/[^a-z0-9-]/g, '')
-      : nameOrId
+    const normalized = normalizeIdentifier(nameOrId)
+    const resolved = typeof normalized === 'string' && MANUAL_POKEMON_ALIASES[normalized]
+      ? MANUAL_POKEMON_ALIASES[normalized]
+      : normalized
 
-    const data = await fetchWithCache(`${BASE_URL}/pokemon/${normalized}`)
+    const data = await fetchWithCache(`${BASE_URL}/pokemon/${resolved}`)
 
     // Obtener nombre en español
     const speciesData = await fetchWithCache(data.species.url)
@@ -184,17 +219,42 @@ export async function searchPokemon(query, limit = 20) {
     // (en producción podrías cachear esta lista o usar un endpoint custom)
     const data = await fetchWithCache(`${BASE_URL}/pokemon?limit=5000`) // Gen 1-9
 
-    const normalized = query.toLowerCase().replace(/[^a-z0-9-]/g, '')
+    const normalized = normalizeIdentifier(query)
 
-    const matches = data.results
+    const index = new Map(
+      data.results.map((p) => [p.name, parseInt(p.url.split('/').filter(Boolean).pop())])
+    )
+
+    const baseMatches = data.results
       .filter(p => p.name.includes(normalized))
-      .slice(0, limit)
-      .map((p) => ({
-        name: p.name,
-        id: parseInt(p.url.split('/').filter(Boolean).pop())
-      }))
+      .map((p) => ({ name: p.name, id: index.get(p.name) }))
 
-    return matches
+    const manualMatches = Object.entries(MANUAL_POKEMON_ALIASES)
+      .filter(([es, en]) => es.includes(normalized) || en.includes(normalized))
+      .map(([, en]) => ({ name: en, id: index.get(en) }))
+
+    const deduped = []
+    const seen = new Set()
+    for (const entry of [...manualMatches, ...baseMatches]) {
+      if (seen.has(entry.name)) continue
+      seen.add(entry.name)
+      deduped.push(entry)
+      if (deduped.length >= limit) break
+    }
+
+    const withDisplay = await Promise.all(
+      deduped.slice(0, limit).map(async (entry) => {
+        try {
+          const species = await fetchWithCache(`${BASE_URL}/pokemon-species/${entry.name}`)
+          const displayName = species.names.find((n) => n.language.name === 'es')?.name || entry.name
+          return { ...entry, displayName }
+        } catch {
+          return { ...entry, displayName: entry.name }
+        }
+      })
+    )
+
+    return withDisplay
   } catch (error) {
     console.error('Error searching pokemon:', error)
     return []
@@ -208,9 +268,7 @@ export async function searchPokemon(query, limit = 20) {
  */
 export async function fetchMove(nameOrId) {
   try {
-    const normalized = typeof nameOrId === 'string'
-      ? nameOrId.toLowerCase().replace(/[^a-z0-9-]/g, '')
-      : nameOrId
+    const normalized = normalizeIdentifier(nameOrId)
 
     const data = await fetchWithCache(`${BASE_URL}/move/${normalized}`)
 
@@ -505,11 +563,12 @@ export async function searchMoves(query, limit = 20) {
 
 export async function fetchPokemonAnalysis(nameOrId, team = []) {
   try {
-    const normalized = typeof nameOrId === 'string'
-      ? nameOrId.toLowerCase().replace(/[^a-z0-9-]/g, '')
-      : nameOrId
+    const normalized = normalizeIdentifier(nameOrId)
+    const resolved = typeof normalized === 'string' && MANUAL_POKEMON_ALIASES[normalized]
+      ? MANUAL_POKEMON_ALIASES[normalized]
+      : normalized
 
-    const pokemonData = await fetchWithCache(`${BASE_URL}/pokemon/${normalized}`)
+    const pokemonData = await fetchWithCache(`${BASE_URL}/pokemon/${resolved}`)
     const speciesData = await fetchWithCache(pokemonData.species.url)
     const evoData = await fetchWithCache(speciesData.evolution_chain.url)
 

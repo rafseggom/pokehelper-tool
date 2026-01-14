@@ -91,3 +91,53 @@ export function parsePokepaste(pasteText) {
 
   return pokemon
 }
+
+/**
+ * Genera un texto en formato pokepaste a partir del equipo actual.
+ * No incluye EVs/IVs porque no se almacenan en la app.
+ * @param {Array} team - Equipo con hasta 6 slots
+ * @returns {string} Texto pokepaste listo para copiar
+ */
+export function buildPokepaste(team) {
+  if (!Array.isArray(team)) return ''
+
+  const toTitle = (value) => {
+    if (!value) return ''
+    return value
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
+  const lines = []
+
+  team.forEach((slot) => {
+    const pokemon = slot?.pokemon
+    if (!pokemon || !pokemon.name) return
+
+    const headerName = pokemon.displayName && pokemon.displayName.toLowerCase() !== pokemon.name
+      ? `${pokemon.displayName} (${pokemon.name})`
+      : (pokemon.displayName || pokemon.name)
+
+    const itemLabel = slot.item?.displayName || slot.item?.name
+    const item = itemLabel ? ` @ ${itemLabel}` : ''
+    lines.push(`${headerName}${item}`)
+
+    if (slot.ability?.name) {
+      lines.push(`Ability: ${slot.ability.name}`)
+    }
+
+    if (slot.nature?.name) {
+      lines.push(`${toTitle(slot.nature.name)} Nature`)
+    }
+
+    const moves = Array.isArray(slot.moves) ? slot.moves : []
+    moves.forEach((mv) => {
+      if (!mv || !mv.name) return
+      lines.push(`- ${mv.name}`)
+    })
+
+    lines.push('')
+  })
+
+  return lines.join('\n').trim()
+}

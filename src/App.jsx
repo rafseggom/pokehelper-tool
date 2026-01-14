@@ -8,7 +8,7 @@ import WildScanner from './components/WildScanner.jsx'
 import Collapsible from './components/Collapsible.jsx'
 import Modal from './components/Modal.jsx'
 import { preloadAllMoves, areMovesPreloaded, getCachedMovesCount, searchPokemon, fetchPokemon, fetchMove, fetchAbility, fetchNature, fetchItem } from './services/pokeapi.js'
-import { parsePokepaste } from './lib/pokepaste.js'
+import { parsePokepaste, buildPokepaste } from './lib/pokepaste.js'
 import { TYPES } from './data/types.js'
 import packageJson from '../package.json' with { type: 'json' }
 import './App.css'
@@ -43,6 +43,7 @@ function App() {
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [importingPaste, setImportingPaste] = useState(false)
+  const [exportingPaste, setExportingPaste] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('team', JSON.stringify(team))
@@ -76,6 +77,33 @@ function App() {
     } finally {
       setLoadingMoves(false)
       setMovesProgress({ current: 0, total: 0 })
+    }
+  }
+
+  const handleExportPokepaste = async () => {
+    const paste = buildPokepaste(filledTeam)
+    if (!paste) {
+      alert('No hay ningún Pokémon en el equipo para exportar')
+      return
+    }
+
+    setExportingPaste(true)
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(paste)
+        alert('✅ Pokepaste copiado al portapapeles')
+      } else {
+        // Fallback simple
+        const ok = window.confirm('Tu navegador no permite copiar automáticamente. ¿Quieres ver el texto para copiarlo manualmente?')
+        if (ok) {
+          window.prompt('Copia tu pokepaste:', paste)
+        }
+      }
+    } catch (error) {
+      console.error('Error al exportar pokepaste:', error)
+      alert(`❌ No se pudo copiar: ${error.message}`)
+    } finally {
+      setExportingPaste(false)
     }
   }
 
@@ -230,6 +258,7 @@ function App() {
                   : 'Cachear ataques'}
             </button>
             <div style={{ display: 'flex', gap: 8 }}>
+              <button className="ghost-btn" onClick={handleExportPokepaste} disabled={exportingPaste}>Exportar Pokepaste</button>
               <button className="ghost-btn" onClick={() => setShowPasteModal(true)}>Importar Pokepaste</button>
               <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
             </div>

@@ -105,7 +105,7 @@ export default function PokemonSearch({ value, onChange }) {
               onClick={() => handleSelect(s.name)}
             >
               <span className="pokemon-id">#{s.id}</span>
-              <span className="pokemon-name">{s.name}</span>
+              <span className="pokemon-name">{s.displayName} ({s.name})</span>
             </button>
           ))}
         </div>
