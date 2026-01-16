@@ -89,10 +89,20 @@ export default function SlotCard({ slot, onChange, index }) {
             <NatureSearch value={slot.nature} onChange={setNature} />
             <ItemSearch value={slot.item} onChange={setItem} />
             
-            {topStats && (
-              <div className="pokemon-top-stats">
-                <span className="top-stats-label">Stats destacadas:</span>
-                <strong>{topStats.display}</strong>
+            {topStats && pokemon.baseStats && (
+              <div className="pokemon-top-stats tooltip-wrapper">
+                <div className="pokemon-top-stats-content">
+                  <span className="top-stats-label">Base Stats:</span>
+                  <strong>{topStats.display}</strong>
+                </div>
+                <div className="tooltip-text">
+                  {pokemon.baseStats.map((stat) => (
+                    <div key={stat.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                      <span>{STAT_ABBR[stat.name] || stat.name}:</span>
+                      <strong>{stat.value}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

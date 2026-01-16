@@ -1389,6 +1389,14 @@ footer {
   border: 1px solid #2a2f40;
   border-radius: 8px;
   font-size: 0.85rem;
+  position: relative;
+}
+
+.pokemon-top-stats-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
 }
 
 .top-stats-label {

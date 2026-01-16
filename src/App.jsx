@@ -258,9 +258,9 @@ function App() {
                   : 'Cachear ataques'}
             </button>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="ghost-btn" onClick={handleExportPokepaste} disabled={exportingPaste}>Exportar Pokepaste</button>
               <button className="ghost-btn" onClick={() => setShowPasteModal(true)}>Importar Pokepaste</button>
               <button className="ghost-btn" onClick={resetAll}>Resetear todo</button>
+              <button className="ghost-btn" onClick={handleExportPokepaste} disabled={exportingPaste}>Exportar Pokepaste</button>
             </div>
           </div>
           <TeamEditor team={filledTeam} onChange={setTeam} />
