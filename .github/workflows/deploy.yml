@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Android CI/CD & Release"]
+    types: [completed]
     branches:
       - main
   workflow_dispatch:
