@@ -56,10 +56,9 @@ Compara tu equipo contra equipos rivales:
 
 Analiza encuentros con Pokémon salvajes:
 
-- Búsqueda de Pokémon salvaje con selección de tipo secundario opcional.
-- Cálculo de efectividad de tus movimientos contra el Pokémon encontrado.
-- Visualización de cuáles de tus Pokémon tienen ventaja/desventaja defensiva.
-- Recomendaciones basadas en tipos para enviar el Pokémon más adecuado.
+- Análisis de estadísticas base del Pokémon salvaje para ver si es buena idea capturarlo o no.
+- Aviso de tipos que cubre el nuevo Pokémon.
+- Información de evoluciones y formas, así como los niveles y métodos para conseguirlas.
 
 ## Cómo Usar
 
